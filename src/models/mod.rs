@@ -6,3 +6,4 @@ pub mod post;
 pub mod github_stats;
 pub mod contact;
 pub mod repository;
+pub mod profile;

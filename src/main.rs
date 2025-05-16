@@ -44,6 +44,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::posts::config)
             .configure(routes::github_stats::config)
             .configure(routes::contact::config)
+            .configure(routes::profile::config)
     })
     .bind((host, port))?
     .run()

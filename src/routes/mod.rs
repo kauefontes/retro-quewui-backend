@@ -4,3 +4,4 @@ pub mod skills;
 pub mod posts;
 pub mod github_stats;
 pub mod contact;
+pub mod profile;
