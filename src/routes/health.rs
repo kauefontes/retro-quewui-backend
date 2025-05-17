@@ -1,18 +1,36 @@
 use actix_web::{get, web, HttpResponse, Responder};
 use serde::Serialize;
 use std::time::{SystemTime, UNIX_EPOCH};
+use utoipa::ToSchema;
 
 use crate::config::database::DbPool;
 use crate::error::AppResult;
 
-#[derive(Serialize)]
-struct HealthResponse {
+#[derive(Serialize, ToSchema)]
+pub struct HealthResponse {
+    /// Service status ("ok" if all systems are operational)
     status: String,
+    /// API version from Cargo.toml
     version: String,
+    /// Current server timestamp (seconds since UNIX epoch)
     timestamp: u64,
+    /// Database connection status
     database: bool,
 }
 
+/// Health check endpoint
+///
+/// Returns the current status of the API and its components.
+/// Use this endpoint to verify that the service is running correctly.
+#[utoipa::path(
+    get,
+    path = "/health",
+    tag = "health",
+    responses(
+        (status = 200, description = "Service is healthy", body = HealthResponse),
+        (status = 500, description = "Service is unhealthy")
+    )
+)]
 #[get("/health")]
 pub async fn health_check(db: web::Data<DbPool>) -> AppResult<impl Responder> {
     // Check database connection

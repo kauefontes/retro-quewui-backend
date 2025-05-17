@@ -1,19 +1,47 @@
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[schema(example = json!({
+    "name": "TypeScript",
+    "percentage": 35
+}))]
 pub struct TopLanguage {
     pub name: String,
     pub percentage: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[schema(example = json!({
+    "date": "2025-05-10",
+    "message": "Fixed memory leak in background processing",
+    "repo": "quewui/rust-performance"
+}))]
 pub struct RecentActivity {
     pub date: String,
     pub message: String,
     pub repo: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[schema(example = json!({
+    "username": "quewui",
+    "repo_count": 42,
+    "followers": 128,
+    "contributions": 829,
+    "top_languages": [
+        {"name": "TypeScript", "percentage": 35},
+        {"name": "Rust", "percentage": 25}
+    ],
+    "recent_activity": [
+        {
+            "date": "2025-05-10",
+            "message": "Fixed memory leak in background processing",
+            "repo": "quewui/rust-performance"
+        }
+    ]
+}))]
 pub struct GithubStats {
     pub username: String,
     pub repo_count: i32,

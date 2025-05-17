@@ -1,7 +1,17 @@
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use uuid::Uuid;
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[schema(example = json!({
+    "id": "post-1",
+    "title": "The Future of Rust in Web Development",
+    "date": "2025-04-10",
+    "tags": ["Rust", "Web Development", "Backend"],
+    "excerpt": "Exploring how Rust is changing the landscape of web development with its performance and safety guarantees.",
+    "content": "# The Future of Rust in Web Development\n\nAs web applications become more complex..."
+}))]
 pub struct Post {
     pub id: String,
     pub title: String,

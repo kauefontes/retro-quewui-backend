@@ -1,24 +1,43 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use log::info;
 use validator::Validate;
+use utoipa::ToSchema;
 
 use crate::config::database::DbPool;
 use crate::error::AppResult;
 use crate::models::contact::{ContactMessage, ContactResponse};
 use crate::validation::{validate_json, validate_email};
 
-#[derive(Debug, Validate, serde::Deserialize)]
+#[derive(Debug, Validate, serde::Deserialize, ToSchema)]
 struct ValidatedContactMessage {
+    /// Sender's full name (2-100 characters)
     #[validate(length(min = 2, max = 100, message = "Name must be between 2 and 100 characters"))]
     name: String,
     
+    /// Sender's email address (must be valid email format)
     #[validate(email(message = "Invalid email format"))]
     email: String,
     
+    /// Message content (10-1000 characters)
     #[validate(length(min = 10, max = 1000, message = "Message must be between 10 and 1000 characters"))]
     message: String,
 }
 
+/// Submit contact form
+///
+/// Submits a contact form message for review.
+/// All fields are validated before processing.
+#[utoipa::path(
+    post,
+    path = "/contact",
+    tag = "contact",
+    request_body = ValidatedContactMessage,
+    responses(
+        (status = 200, description = "Contact form submitted successfully", body = ContactResponse),
+        (status = 400, description = "Validation error"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 #[post("/contact")]
 pub async fn submit_contact_form(
     form: web::Json<ValidatedContactMessage>,

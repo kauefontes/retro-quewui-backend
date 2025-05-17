@@ -5,6 +5,7 @@ use std::env;
 
 mod auth;
 mod config;
+mod docs;
 mod error;
 mod models;
 mod routes;
@@ -45,6 +46,7 @@ async fn main() -> std::io::Result<()> {
     let frontend_url = env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
     
     log::info!("Starting server at http://{}:{}", host, port);
+    log::info!("API documentation available at http://{}:{}/docs", host, port);
     log::info!("Allowing CORS from: {}", frontend_url);
     
     HttpServer::new(move || {
@@ -62,6 +64,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .wrap(cors)
             .app_data(app_data)
+            // API Documentation
+            .configure(docs::config)
             // API Routes
             .configure(routes::health::config)
             .configure(routes::auth::config)

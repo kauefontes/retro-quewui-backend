@@ -5,24 +5,38 @@ use futures::future::{ready, Ready};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::env;
+use utoipa::ToSchema;
 
 use crate::error::{AppError, AppResult};
 
 // JWT Claims structure
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct Claims {
-    pub sub: String,        // Subject (user ID)
-    pub name: String,       // User name
-    pub role: String,       // User role
-    pub exp: usize,         // Expiration time (as UTC timestamp)
-    pub iat: usize,         // Issued at (as UTC timestamp)
+    /// Subject (user ID)
+    pub sub: String,        
+    /// User name
+    pub name: String,       
+    /// User role
+    pub role: String,       
+    /// Expiration time (as UTC timestamp)
+    pub exp: usize,         
+    /// Issued at (as UTC timestamp)
+    pub iat: usize,         
 }
 
 // User structure
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[schema(example = json!({
+   "id": "1",
+   "name": "Admin User",
+   "role": "admin"
+}))]
 pub struct User {
+    /// Unique user identifier
     pub id: String,
+    /// User's full name
     pub name: String,
+    /// User's role (e.g., "admin", "user")
     pub role: String,
 }
 

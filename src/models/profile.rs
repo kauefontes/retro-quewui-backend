@@ -1,6 +1,25 @@
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[schema(example = json!({
+    "bio": [
+        "Senior Software Developer specializing in creating intuitive and high-performance web applications.",
+        "I'm passionate about building software that combines technical excellence with great user experience."
+    ],
+    "social_links": [
+        {"title": "GitHub", "url": "https://github.com/kauefontes", "icon": "󰊤"},
+        {"title": "LinkedIn", "url": "https://www.linkedin.com/in/kauefontes/", "icon": "󰌻"}
+    ],
+    "education": [
+        {"degree": "Computer Science, B.Sc.", "institution": "University of Technology", "period": "2016 - 2020"}
+    ],
+    "languages": [
+        {"name": "English", "level": "Fluent"},
+        {"name": "Portuguese", "level": "Native"}
+    ]
+}))]
 pub struct Profile {
     pub bio: Vec<String>,
     pub social_links: Vec<SocialLink>,
@@ -8,21 +27,35 @@ pub struct Profile {
     pub languages: Vec<Language>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[schema(example = json!({
+    "title": "GitHub",
+    "url": "https://github.com/kauefontes",
+    "icon": "󰊤"
+}))]
 pub struct SocialLink {
     pub title: String,
     pub url: String,
     pub icon: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[schema(example = json!({
+    "degree": "Computer Science, B.Sc.",
+    "institution": "University of Technology",
+    "period": "2016 - 2020"
+}))]
 pub struct Education {
     pub degree: String,
     pub institution: String,
     pub period: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[schema(example = json!({
+    "name": "English",
+    "level": "Fluent"
+}))]
 pub struct Language {
     pub name: String,
     pub level: String,

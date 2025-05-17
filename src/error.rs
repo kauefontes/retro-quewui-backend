@@ -1,6 +1,7 @@
 use actix_web::{error::Error as ActixError, http::StatusCode, HttpResponse, ResponseError};
 use serde::Serialize;
 use thiserror::Error;
+use utoipa::ToSchema;
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -26,11 +27,14 @@ pub enum AppError {
     BadRequestError(String),
 }
 
-#[derive(Serialize)]
-struct ErrorResponse {
-    success: bool,
-    message: String,
-    error_code: Option<String>,
+#[derive(Serialize, ToSchema)]
+pub struct ErrorResponse {
+    /// Indicates whether the operation was successful (always false for errors)
+    pub success: bool,
+    /// Human-readable error message
+    pub message: String,
+    /// HTTP status code as string
+    pub error_code: Option<String>,
 }
 
 impl ResponseError for AppError {

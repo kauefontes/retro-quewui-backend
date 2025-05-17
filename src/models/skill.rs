@@ -1,6 +1,12 @@
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[schema(example = json!({
+    "category": "Languages",
+    "items": ["JavaScript", "TypeScript", "Rust", "Python", "SQL"]
+}))]
 pub struct Skill {
     pub category: String,
     pub items: Vec<String>,

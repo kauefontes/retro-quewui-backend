@@ -13,7 +13,7 @@ A production-ready Rust API backend for the retro-tech style "Quewui" portfolio.
 - **Health Checks**: Endpoint for monitoring application health
 - **Docker Support**: Containerization for easy deployment
 - **Testing**: Unit and integration tests
-- **Documentation**: Comprehensive API documentation
+- **Documentation**: Comprehensive API documentation with Swagger/OpenAPI
 
 ## Project Structure
 
@@ -44,6 +44,15 @@ src/
 - `GET /github-stats` - Get GitHub statistics
 - `GET /profile` - Get profile information
 - `POST /contact` - Submit contact form data
+
+### API Documentation
+
+Interactive API documentation is available when the server is running:
+
+- **Swagger UI**: `http://localhost:8080/docs/`
+- **OpenAPI JSON**: `http://localhost:8080/api-docs/openapi.json`
+
+This documentation provides a complete reference of all endpoints, request/response models, and authentication requirements.
 
 ## Requirements
 
@@ -76,6 +85,12 @@ src/
    cargo run
    ```
 
+5. Access the API documentation in your browser:
+
+   ```
+   http://localhost:8080/docs/
+   ```
+
 ### Docker Deployment
 
 1. Build and run using Docker Compose:
@@ -85,6 +100,7 @@ src/
    ```
 
 2. The API will be available at `http://localhost:8080`.
+3. The API documentation will be available at `http://localhost:8080/docs/`.
 
 ## Testing
 
