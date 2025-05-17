@@ -33,7 +33,7 @@ pub async fn init_db() -> Result<DbPool> {
 
 /// Run migrations manually by executing SQL files
 async fn run_migrations(pool: &Pool<Sqlite>) -> Result<()> {
-    let migrations_dir = Path::new("retro-quewui-backend/migrations");
+    let migrations_dir = Path::new("migrations");
     
     if !migrations_dir.exists() {
         return Err(anyhow::anyhow!("Migrations directory not found"));
