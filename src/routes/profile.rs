@@ -3,7 +3,7 @@ use log::info;
 use serde::Deserialize;
 
 use crate::auth::AuthenticatedUser;
-use crate::error::{AppError, AppResult};
+use crate::error::AppResult;
 use crate::models::profile::{Profile, SocialLink, Education, Language, get_mock_profile};
 
 /// Get user profile

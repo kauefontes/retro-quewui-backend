@@ -47,8 +47,11 @@ use utoipa_swagger_ui::SwaggerUi;
         crate::routes::profile::get_profile,
         crate::routes::profile::update_profile,
 
-        // Contact endpoint
-        crate::routes::contact::submit_contact_form
+        // Contact endpoints
+        crate::routes::contact::submit_contact_form,
+        crate::routes::contact::get_all_messages,
+        crate::routes::contact::get_message_by_id,
+        crate::routes::contact::delete_message
     ),
     components(
         schemas(

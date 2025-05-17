@@ -1,10 +1,10 @@
-use actix_web::{error::Error, web};
+use actix_web::web;
 use validator::{Validate, ValidationErrors};
 
 use crate::error::{AppError, AppResult};
 
 // Helper function to validate JSON input
-pub fn validate_json<T>(json: web::Json<T>) -> Result<T, Error>
+pub fn validate_json<T>(json: web::Json<T>) -> Result<T, AppError>
 where
     T: Validate,
 {
@@ -12,7 +12,7 @@ where
         Ok(_) => Ok(json.into_inner()),
         Err(e) => {
             let error_message = format_validation_errors(&e);
-            Err(AppError::validation_error(error_message).into())
+            Err(AppError::validation_error(error_message))
         }
     }
 }
@@ -38,7 +38,7 @@ fn format_validation_errors(errors: &ValidationErrors) -> String {
 // Validate email format
 pub fn validate_email(email: &str) -> AppResult<()> {
     let email_regex = regex::Regex::new(
-        r"^([a-z0-9_+]([a-z0-9_+.]*[a-z0-9_+])?)@([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6})",
+        r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
     )
     .unwrap();
     

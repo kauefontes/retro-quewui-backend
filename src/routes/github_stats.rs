@@ -1,15 +1,27 @@
+// filepath: /home/kaue/developer/quewuicom/retro-quewui-backend/src/routes/github_stats.rs
 use actix_web::{get, put, web, HttpResponse, Responder};
-use log::{info, error};
+use log::info;
 use serde::Deserialize;
 
 use crate::auth::AuthenticatedUser;
-use crate::error::{AppError, AppResult};
-use crate::models::github_stats::{GithubStats, TopLanguage, RecentActivity, get_mock_github_stats};
+use crate::error::AppResult;
+use crate::models::github_stats::get_mock_github_stats;
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct UpdateGithubStatsRequest {
+    /// GitHub username
+    pub username: Option<String>,
+    /// Number of public repositories
+    pub repo_count: Option<i32>,
+    /// Number of followers
+    pub followers: Option<i32>,
+    /// Number of contributions in past year
+    pub contributions: Option<i32>,
+}
 
 /// Get GitHub statistics
 ///
-/// Returns GitHub statistics including repository count, followers, contributions,
-/// top languages, and recent activity.
+/// Returns the GitHub statistics for the portfolio owner.
 #[utoipa::path(
     get,
     path = "/github-stats",
@@ -25,25 +37,9 @@ pub async fn get_github_stats() -> impl Responder {
     HttpResponse::Ok().json(stats)
 }
 
-#[derive(Debug, Deserialize, utoipa::ToSchema)]
-pub struct UpdateGithubStatsRequest {
-    /// GitHub username
-    pub username: Option<String>,
-    /// Number of public repositories
-    pub repo_count: Option<i32>,
-    /// Number of followers
-    pub followers: Option<i32>,
-    /// Number of contributions in the last year
-    pub contributions: Option<i32>,
-    /// List of top programming languages and their percentages
-    pub top_languages: Option<Vec<TopLanguage>>,
-    /// List of recent GitHub activity
-    pub recent_activity: Option<Vec<RecentActivity>>,
-}
-
 /// Update GitHub statistics
 ///
-/// Updates the GitHub statistics with the provided data.
+/// Updates the GitHub statistics for the portfolio owner.
 /// Requires authentication.
 #[utoipa::path(
     put,
@@ -55,7 +51,6 @@ pub struct UpdateGithubStatsRequest {
     request_body = UpdateGithubStatsRequest,
     responses(
         (status = 200, description = "GitHub statistics updated successfully", body = GithubStats),
-        (status = 400, description = "Invalid GitHub stats data"),
         (status = 401, description = "Unauthorized - Invalid or missing authentication token"),
         (status = 500, description = "Internal server error")
     )
@@ -65,22 +60,30 @@ pub async fn update_github_stats(
     stats_req: web::Json<UpdateGithubStatsRequest>,
     _user: AuthenticatedUser, // Require authentication
 ) -> AppResult<impl Responder> {
-    let existing_stats = get_mock_github_stats();
+    // Get current stats
+    let mut stats = get_mock_github_stats();
     
-    // Create updated stats
-    let updated_stats = GithubStats {
-        username: stats_req.username.clone().unwrap_or_else(|| existing_stats.username.clone()),
-        repo_count: stats_req.repo_count.unwrap_or(existing_stats.repo_count),
-        followers: stats_req.followers.unwrap_or(existing_stats.followers),
-        contributions: stats_req.contributions.unwrap_or(existing_stats.contributions),
-        top_languages: stats_req.top_languages.clone().unwrap_or_else(|| existing_stats.top_languages.clone()),
-        recent_activity: stats_req.recent_activity.clone().unwrap_or_else(|| existing_stats.recent_activity.clone()),
-    };
+    // Update fields if provided
+    if let Some(username) = &stats_req.username {
+        stats.username = username.clone();
+    }
     
-    // In a real application, you would update this in a database
-    info!("Updated GitHub stats for user: {}", updated_stats.username);
+    if let Some(repo_count) = stats_req.repo_count {
+        stats.repo_count = repo_count;
+    }
     
-    Ok(HttpResponse::Ok().json(updated_stats))
+    if let Some(followers) = stats_req.followers {
+        stats.followers = followers;
+    }
+    
+    if let Some(contributions) = stats_req.contributions {
+        stats.contributions = contributions;
+    }
+    
+    // In a real application, you would save this to a database
+    info!("Updated GitHub stats for user: {}", stats.username);
+    
+    Ok(HttpResponse::Ok().json(stats))
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {

@@ -1,12 +1,13 @@
-use actix_web::{post, web, HttpResponse, Responder};
+use actix_web::{post, get, delete, web, HttpResponse, Responder};
 use log::info;
 use validator::Validate;
 use utoipa::ToSchema;
 
+use crate::auth::AuthenticatedUser;
 use crate::config::database::DbPool;
 use crate::error::AppResult;
-use crate::models::contact::{ContactMessage, ContactResponse};
-use crate::validation::{validate_json, validate_email};
+use crate::models::contact::{ContactMessage, ContactResponse, ContactRepository};
+use crate::validation::validate_json;
 
 #[derive(Debug, Validate, serde::Deserialize, ToSchema)]
 struct ValidatedContactMessage {
@@ -18,8 +19,8 @@ struct ValidatedContactMessage {
     #[validate(email(message = "Invalid email format"))]
     email: String,
     
-    /// Message content (10-1000 characters)
-    #[validate(length(min = 10, max = 1000, message = "Message must be between 10 and 1000 characters"))]
+    /// Message content (10-5000 characters)
+    #[validate(length(min = 10, max = 5000, message = "Message must be between 10 and 5000 characters"))]
     message: String,
 }
 
@@ -44,34 +45,144 @@ pub async fn submit_contact_form(
     db: web::Data<DbPool>,
 ) -> AppResult<impl Responder> {
     // Validate the form
-    let form = validate_json(form)?;
+    let form = match validate_json(form) {
+        Ok(form) => form,
+        Err(e) => {
+            info!("Contact form validation failed: {}", e);
+            return Err(e);
+        }
+    };
     
-    // Additional validation if needed
-    validate_email(&form.email)?;
+    // We've already validated the email with the validator crate's #[validate(email)]
+    // attribute, so we're removing the redundant custom validation
     
     info!(
         "Contact form submission received from {} ({})",
         form.name, form.email
     );
     
-    // In a real application, you would:
-    // 1. Store in database
+    // Create contact message
     let contact = ContactMessage::new(
         form.name.clone(),
         form.email.clone(),
         form.message.clone(),
     );
     
-    // TODO: Store in database
-    // let repo = ContactRepository::new(db.get_ref().clone());
-    // repo.create(contact).await?;
+    // Store in database
+    let repo = ContactRepository::new(db.get_ref().clone());
     
-    // 2. Send email notification
-    // TODO: Implement email sending
+    // Log the attempt to create a contact message
+    info!("Attempting to store contact message in database");
+    
+    // Create the contact message and handle errors
+    let result = repo.create(contact).await;
+    
+    match result {
+        Ok(_) => {
+            info!("Contact message stored successfully");
+            Ok(HttpResponse::Ok().json(ContactResponse::success()))
+        },
+        Err(e) => {
+            info!("Failed to store contact message: {}", e);
+            // Forward the error to the error handling middleware
+            Err(e)
+        }
+    }
+}
+
+/// Get all contact messages
+///
+/// Returns a list of all contact form submissions.
+/// Requires authentication.
+#[utoipa::path(
+    get,
+    path = "/admin/messages",
+    tag = "contact",
+    security(("jwt" = [])),
+    responses(
+        (status = 200, description = "List of all contact messages", body = Vec<ContactMessage>),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[get("/admin/messages")]
+pub async fn get_all_messages(
+    _user: AuthenticatedUser,
+    db: web::Data<DbPool>,
+) -> AppResult<impl Responder> {
+    let repo = ContactRepository::new(db.get_ref().clone());
+    let messages = repo.get_all().await?;
+    
+    Ok(HttpResponse::Ok().json(messages))
+}
+
+/// Get contact message by ID
+///
+/// Returns a single contact message with the specified ID.
+/// Requires authentication.
+#[utoipa::path(
+    get,
+    path = "/admin/messages/{id}",
+    tag = "contact",
+    security(("jwt" = [])),
+    params(
+        ("id" = String, Path, description = "Message unique identifier")
+    ),
+    responses(
+        (status = 200, description = "Message found", body = ContactMessage),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Message not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[get("/admin/messages/{id}")]
+pub async fn get_message_by_id(
+    _user: AuthenticatedUser,
+    path: web::Path<String>,
+    db: web::Data<DbPool>,
+) -> AppResult<impl Responder> {
+    let id = path.into_inner();
+    let repo = ContactRepository::new(db.get_ref().clone());
+    let message = repo.get_by_id(&id).await?;
+    
+    Ok(HttpResponse::Ok().json(message))
+}
+
+/// Delete a contact message
+///
+/// Deletes a contact message with the specified ID.
+/// Requires authentication.
+#[utoipa::path(
+    delete,
+    path = "/admin/messages/{id}",
+    tag = "contact",
+    security(("jwt" = [])),
+    params(
+        ("id" = String, Path, description = "Message unique identifier")
+    ),
+    responses(
+        (status = 200, description = "Message deleted successfully"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Message not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[delete("/admin/messages/{id}")]
+pub async fn delete_message(
+    _user: AuthenticatedUser,
+    path: web::Path<String>,
+    db: web::Data<DbPool>,
+) -> AppResult<impl Responder> {
+    let id = path.into_inner();
+    let repo = ContactRepository::new(db.get_ref().clone());
+    repo.delete(&id).await?;
     
     Ok(HttpResponse::Ok().json(ContactResponse::success()))
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(submit_contact_form);
+    cfg.service(submit_contact_form)
+       .service(get_all_messages)
+       .service(get_message_by_id)
+       .service(delete_message);
 }

@@ -1,5 +1,5 @@
 use actix_web::{get, post, put, delete, HttpResponse, Responder, web};
-use log::{info, error};
+use log::info;
 use serde::Deserialize;
 
 use crate::auth::AuthenticatedUser;
