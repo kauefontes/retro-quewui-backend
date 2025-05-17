@@ -1,7 +1,10 @@
-pub mod projects;
-pub mod experiences;
-pub mod skills;
-pub mod posts;
-pub mod github_stats;
+pub mod admin;
+pub mod auth;
 pub mod contact;
+pub mod experiences;
+pub mod github_stats;
+pub mod health;
+pub mod posts;
 pub mod profile;
+pub mod projects;
+pub mod skills;
