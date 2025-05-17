@@ -1,41 +1,39 @@
 # Retro Quewui Backend
 
-Rust API backend for the retro-tech style "Quewui" portfolio.
+A production-ready Rust API backend for the retro-tech style "Quewui" portfolio.
 
-## Technologies
+## Features
 
-- Rust
-- Actix Web
-- Serde (JSON serialization/deserialization)
-- CORS for frontend integration
+- **RESTful API**: Clean and consistent API endpoints
+- **Database Integration**: SQLite with SQLx for type-safe queries
+- **Authentication**: JWT-based authentication system
+- **Error Handling**: Centralized error handling with custom error types
+- **Validation**: Request validation with helpful error messages
+- **Logging**: Structured logging with configurable levels
+- **Health Checks**: Endpoint for monitoring application health
+- **Docker Support**: Containerization for easy deployment
+- **Testing**: Unit and integration tests
+- **Documentation**: Comprehensive API documentation
 
 ## Project Structure
 
 ```
 src/
-├── main.rs           # Application entry point
-├── models/           # Data models
-│   ├── contact.rs
-│   ├── experience.rs
-│   ├── github_stats.rs
-│   ├── mod.rs
-│   ├── post.rs
-│   ├── profile.rs
-│   ├── project.rs
-│   └── skill.rs
-└── routes/           # API routes
-    ├── contact.rs
-    ├── experiences.rs
-    ├── github_stats.rs
-    ├── mod.rs
-    ├── posts.rs
-    ├── profile.rs
-    ├── projects.rs
-    └── skills.rs
+├── auth/           # Authentication system
+├── config/         # Configuration management
+├── error/          # Error handling
+├── models/         # Data models and repositories
+├── routes/         # API routes
+├── tests/          # Tests
+├── validation/     # Input validation
+└── main.rs         # Application entry point
 ```
 
 ## API Routes
 
+- `GET /health` - Health check endpoint
+- `POST /auth/login` - Authenticate and get JWT token
+- `GET /admin/dashboard` - Protected admin dashboard (requires authentication)
 - `GET /projects` - List all projects
 - `GET /projects/{id}` - Get a specific project
 - `GET /experiences` - List all professional experiences
@@ -44,15 +42,18 @@ src/
 - `GET /posts` - List all blog posts
 - `GET /posts/{id}` - Get a specific post
 - `GET /github-stats` - Get GitHub statistics
-- `GET /profile` - Get profile information (bio, social links, education, languages)
+- `GET /profile` - Get profile information
 - `POST /contact` - Submit contact form data
 
 ## Requirements
 
 - Rust 1.75 or higher
 - Cargo (Rust package manager)
+- SQLite (for development)
 
-## Installation and Execution
+## Installation and Setup
+
+### Local Development
 
 1. Clone the repository:
 
@@ -61,33 +62,64 @@ src/
    cd retro-quewui-backend
    ```
 
-2. Compile and run in development mode:
+2. Copy the example environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Edit the `.env` file to configure your environment.
+
+4. Compile and run in development mode:
 
    ```bash
    cargo run
    ```
 
-3. Or compile in production mode:
+### Docker Deployment
+
+1. Build and run using Docker Compose:
+
    ```bash
-   cargo build --release
-   ./target/release/retro-quewui-backend
+   docker-compose up -d
    ```
+
+2. The API will be available at `http://localhost:8080`.
+
+## Testing
+
+Run the test suite:
+
+```bash
+cargo test
+```
 
 ## Environment Variables
 
-Configure the following variables in the `.env` file at the project root:
+Configure the following variables in the `.env` file:
 
 - `HOST` - Server IP address (default: 127.0.0.1)
 - `PORT` - API port (default: 8080)
+- `DATABASE_URL` - SQLite database URL (default: sqlite:./data.db)
 - `FRONTEND_URL` - Frontend URL for CORS configuration (default: http://localhost:5173)
 - `RUST_LOG` - Log level (default: info)
+- `JWT_SECRET` - Secret key for JWT token generation
 
-## Development
+## Production Deployment Checklist
 
-For local development, the server will be available at:
+Before deploying to production, ensure:
 
-```
-http://localhost:8080
-```
+1. Set a strong `JWT_SECRET` in the environment
+2. Configure proper CORS settings with your production frontend URL
+3. Set up monitoring and logging
+4. Configure a reverse proxy (like Nginx) for SSL termination
+5. Set up database backups
+6. Configure rate limiting if needed
 
-The backend currently uses mock data for development. In a future implementation, it can be connected to a database.
+## Contributing
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
