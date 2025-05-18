@@ -1,14 +1,18 @@
 use actix_web::{get, post, put, delete, web, HttpResponse, Responder};
-use log::info;
+use log::{error, info};
 use serde::Deserialize;
+use utoipa::ToSchema;
 
 use crate::auth::AuthenticatedUser;
+use crate::config::database::DbPool;
 use crate::error::{AppError, AppResult};
-use crate::models::experience::{Experience, get_mock_experiences};
+use crate::models::experience::Experience;
+use crate::models::experience_repository::ExperienceRepository;
+use crate::models::repository::Repository;
 
 /// Get all experiences
 ///
-/// Returns a list of all professional experiences.
+/// Returns a list of all work experiences sorted by start date (newest first).
 #[utoipa::path(
     get,
     path = "/experiences",
@@ -19,9 +23,17 @@ use crate::models::experience::{Experience, get_mock_experiences};
     )
 )]
 #[get("/experiences")]
-pub async fn get_all_experiences() -> impl Responder {
-    let experiences = get_mock_experiences();
-    HttpResponse::Ok().json(experiences)
+pub async fn get_all_experiences(db: web::Data<DbPool>) -> AppResult<impl Responder> {
+    let repo = ExperienceRepository::new(db.get_ref().clone());
+    
+    let experiences = repo.find_all().await
+        .map_err(|e| {
+            error!("Failed to fetch experiences: {}", e);
+            AppError::internal_error(format!("Failed to fetch experiences: {}", e))
+        })?;
+    
+    info!("Retrieved {} experiences", experiences.len());
+    Ok(HttpResponse::Ok().json(experiences))
 }
 
 /// Get experience by ID
@@ -41,17 +53,29 @@ pub async fn get_all_experiences() -> impl Responder {
     )
 )]
 #[get("/experiences/{id}")]
-pub async fn get_experience_by_id(path: web::Path<String>) -> impl Responder {
+pub async fn get_experience_by_id(path: web::Path<String>, db: web::Data<DbPool>) -> AppResult<impl Responder> {
     let id = path.into_inner();
-    let experiences = get_mock_experiences();
+    let repo = ExperienceRepository::new(db.get_ref().clone());
     
-    match experiences.iter().find(|e| e.id == id) {
-        Some(experience) => HttpResponse::Ok().json(experience),
-        None => HttpResponse::NotFound().body(format!("Experience with ID {} not found", id)),
+    let experience = repo.find_by_id(&id).await
+        .map_err(|e| {
+            error!("Failed to fetch experience {}: {}", id, e);
+            AppError::internal_error(format!("Failed to fetch experience: {}", e))
+        })?;
+    
+    match experience {
+        Some(experience) => {
+            info!("Retrieved experience with ID: {}", id);
+            Ok(HttpResponse::Ok().json(experience))
+        },
+        None => {
+            info!("Experience with ID {} not found", id);
+            Err(AppError::not_found(format!("Experience with ID {} not found", id)))
+        }
     }
 }
 
-#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateExperienceRequest {
     /// Name of the company or organization
     pub company: String,
@@ -69,7 +93,7 @@ pub struct CreateExperienceRequest {
     pub highlights: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateExperienceRequest {
     /// Name of the company or organization
     pub company: Option<String>,
@@ -89,7 +113,7 @@ pub struct UpdateExperienceRequest {
 
 /// Create a new experience
 ///
-/// Creates a new professional experience entry.
+/// Creates a new work experience entry with the provided details.
 /// Requires authentication.
 #[utoipa::path(
     post,
@@ -109,8 +133,11 @@ pub struct UpdateExperienceRequest {
 #[post("/experiences")]
 pub async fn create_experience(
     experience_req: web::Json<CreateExperienceRequest>,
+    db: web::Data<DbPool>,
     _user: AuthenticatedUser, // Require authentication
 ) -> AppResult<impl Responder> {
+    let repo = ExperienceRepository::new(db.get_ref().clone());
+    
     let experience = Experience::new(
         experience_req.company.clone(),
         experience_req.position.clone(),
@@ -121,16 +148,19 @@ pub async fn create_experience(
         experience_req.highlights.clone(),
     );
     
-    // In a real application, you would save this to a database
-    // For now, we'll just return the created experience
-    info!("Created new experience for {}: {}", experience.company, experience.position);
+    let created_experience = repo.create(experience).await
+        .map_err(|e| {
+            error!("Failed to create experience: {}", e);
+            AppError::internal_error(format!("Failed to create experience: {}", e))
+        })?;
     
-    Ok(HttpResponse::Created().json(experience))
+    info!("Created new experience with ID: {}", created_experience.id);
+    Ok(HttpResponse::Created().json(created_experience))
 }
 
 /// Update an existing experience
 ///
-/// Updates an existing experience with the specified ID.
+/// Updates an existing work experience entry with the specified ID.
 /// Requires authentication.
 #[utoipa::path(
     put,
@@ -155,39 +185,49 @@ pub async fn create_experience(
 pub async fn update_experience(
     path: web::Path<String>,
     experience_req: web::Json<UpdateExperienceRequest>,
+    db: web::Data<DbPool>,
     _user: AuthenticatedUser, // Require authentication
 ) -> AppResult<impl Responder> {
     let id = path.into_inner();
-    let experiences = get_mock_experiences();
+    let repo = ExperienceRepository::new(db.get_ref().clone());
     
-    // Find the experience to update
-    let existing_experience = experiences.iter().find(|e| e.id == id)
+    // First, get the existing experience
+    let existing_experience = repo.find_by_id(&id).await
+        .map_err(|e| {
+            error!("Failed to fetch experience {}: {}", id, e);
+            AppError::internal_error(format!("Failed to fetch experience: {}", e))
+        })?
         .ok_or_else(|| {
             info!("Experience with ID {} not found for update", id);
             AppError::not_found(format!("Experience with ID {} not found", id))
         })?;
     
-    // Create updated experience
+    // Update the experience with new values, keeping existing values if not provided
     let updated_experience = Experience {
-        id: existing_experience.id.clone(),
-        company: experience_req.company.clone().unwrap_or_else(|| existing_experience.company.clone()),
-        position: experience_req.position.clone().unwrap_or_else(|| existing_experience.position.clone()),
-        start_date: experience_req.start_date.clone().unwrap_or_else(|| existing_experience.start_date.clone()),
-        end_date: experience_req.end_date.clone().or_else(|| existing_experience.end_date.clone()),
-        description: experience_req.description.clone().unwrap_or_else(|| existing_experience.description.clone()),
-        technologies: experience_req.technologies.clone().unwrap_or_else(|| existing_experience.technologies.clone()),
-        highlights: experience_req.highlights.clone().unwrap_or_else(|| existing_experience.highlights.clone()),
+        id: existing_experience.id,
+        company: experience_req.company.clone().unwrap_or(existing_experience.company),
+        position: experience_req.position.clone().unwrap_or(existing_experience.position),
+        start_date: experience_req.start_date.clone().unwrap_or(existing_experience.start_date),
+        end_date: experience_req.end_date.clone().or(existing_experience.end_date),
+        description: experience_req.description.clone().unwrap_or(existing_experience.description),
+        technologies: experience_req.technologies.clone().unwrap_or(existing_experience.technologies),
+        highlights: experience_req.highlights.clone().unwrap_or(existing_experience.highlights),
     };
     
-    // In a real application, you would update this in a database
-    info!("Updated experience with ID: {}", id);
+    // Save the updated experience
+    let result = repo.update(&id, updated_experience.clone()).await
+        .map_err(|e| {
+            error!("Failed to update experience {}: {}", id, e);
+            AppError::internal_error(format!("Failed to update experience: {}", e))
+        })?;
     
-    Ok(HttpResponse::Ok().json(updated_experience))
+    info!("Updated experience with ID: {}", id);
+    Ok(HttpResponse::Ok().json(result))
 }
 
 /// Delete an experience
 ///
-/// Deletes the experience with the specified ID.
+/// Deletes the work experience entry with the specified ID.
 /// Requires authentication.
 #[utoipa::path(
     delete,
@@ -209,23 +249,39 @@ pub async fn update_experience(
 #[delete("/experiences/{id}")]
 pub async fn delete_experience(
     path: web::Path<String>,
+    db: web::Data<DbPool>,
     _user: AuthenticatedUser, // Require authentication
 ) -> AppResult<impl Responder> {
     let id = path.into_inner();
-    let experiences = get_mock_experiences();
+    let repo = ExperienceRepository::new(db.get_ref().clone());
     
     // Check if the experience exists
-    let experience_exists = experiences.iter().any(|e| e.id == id);
+    let experience_exists = repo.find_by_id(&id).await
+        .map_err(|e| {
+            error!("Failed to fetch experience {}: {}", id, e);
+            AppError::internal_error(format!("Failed to fetch experience: {}", e))
+        })?
+        .is_some();
     
     if !experience_exists {
         info!("Experience with ID {} not found for deletion", id);
         return Err(AppError::not_found(format!("Experience with ID {} not found", id)));
     }
     
-    // In a real application, you would delete this from a database
-    info!("Deleted experience with ID: {}", id);
+    // Delete the experience
+    let deleted = repo.delete(&id).await
+        .map_err(|e| {
+            error!("Failed to delete experience {}: {}", id, e);
+            AppError::internal_error(format!("Failed to delete experience: {}", e))
+        })?;
     
-    Ok(HttpResponse::NoContent().finish())
+    if deleted {
+        info!("Deleted experience with ID: {}", id);
+        Ok(HttpResponse::NoContent().finish())
+    } else {
+        error!("Failed to delete experience with ID: {}", id);
+        Err(AppError::internal_error("Failed to delete experience"))
+    }
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {

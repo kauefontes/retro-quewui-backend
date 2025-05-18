@@ -147,10 +147,11 @@ pub fn require_admin() -> impl Fn(AuthenticatedUser) -> Result<AuthenticatedUser
 pub async fn authenticate_user(username: &str, password: &str) -> AppResult<Option<User>> {
     // In a real application, you would check credentials against a database
     // For now, we'll just have a hardcoded admin user for development
-    if username == "admin" && password == "admin" {
+    if (username == "admin" && password == "admin") || 
+       (username == "kauefontes@outlook.com" && password == "MT$MT$T4lutaEPRAV4LER") {
         Ok(Some(User {
             id: "1".to_string(),
-            name: "Admin User".to_string(),
+            name: "Kaue Fontes".to_string(),
             role: "admin".to_string(),
         }))
     } else {

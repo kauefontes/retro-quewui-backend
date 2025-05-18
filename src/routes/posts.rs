@@ -1,10 +1,13 @@
 use actix_web::{get, post, put, delete, web, HttpResponse, Responder};
-use log::info;
+use log::{error, info};
 use serde::Deserialize;
 
 use crate::auth::AuthenticatedUser;
+use crate::config::database::DbPool;
 use crate::error::{AppError, AppResult};
-use crate::models::post::{Post, get_mock_posts};
+use crate::models::post::Post;
+use crate::models::post_repository::PostRepository;
+use crate::models::repository::Repository;
 
 /// Get all blog posts
 ///
@@ -19,9 +22,17 @@ use crate::models::post::{Post, get_mock_posts};
     )
 )]
 #[get("/posts")]
-pub async fn get_all_posts() -> impl Responder {
-    let posts = get_mock_posts();
-    HttpResponse::Ok().json(posts)
+pub async fn get_all_posts(db: web::Data<DbPool>) -> AppResult<impl Responder> {
+    let repo = PostRepository::new(db.get_ref().clone());
+    
+    let posts = repo.find_all().await
+        .map_err(|e| {
+            error!("Failed to fetch posts: {}", e);
+            AppError::internal_error(format!("Failed to fetch posts: {}", e))
+        })?;
+    
+    info!("Retrieved {} posts", posts.len());
+    Ok(HttpResponse::Ok().json(posts))
 }
 
 /// Get blog post by ID
@@ -41,13 +52,25 @@ pub async fn get_all_posts() -> impl Responder {
     )
 )]
 #[get("/posts/{id}")]
-pub async fn get_post_by_id(path: web::Path<String>) -> impl Responder {
+pub async fn get_post_by_id(path: web::Path<String>, db: web::Data<DbPool>) -> AppResult<impl Responder> {
     let id = path.into_inner();
-    let posts = get_mock_posts();
+    let repo = PostRepository::new(db.get_ref().clone());
     
-    match posts.iter().find(|p| p.id == id) {
-        Some(post) => HttpResponse::Ok().json(post),
-        None => HttpResponse::NotFound().body(format!("Post with ID {} not found", id)),
+    let post = repo.find_by_id(&id).await
+        .map_err(|e| {
+            error!("Failed to fetch post {}: {}", id, e);
+            AppError::internal_error(format!("Failed to fetch post: {}", e))
+        })?;
+    
+    match post {
+        Some(post) => {
+            info!("Retrieved post with ID: {}", id);
+            Ok(HttpResponse::Ok().json(post))
+        },
+        None => {
+            info!("Post with ID {} not found", id);
+            Err(AppError::not_found(format!("Post with ID {} not found", id)))
+        }
     }
 }
 
@@ -102,7 +125,10 @@ pub struct UpdatePostRequest {
 pub async fn create_post(
     post_req: web::Json<CreatePostRequest>,
     _user: AuthenticatedUser, // Require authentication
+    db: web::Data<DbPool>,
 ) -> AppResult<impl Responder> {
+    let repo = PostRepository::new(db.get_ref().clone());
+    
     let post = Post::new(
         post_req.title.clone(),
         post_req.date.clone(),
@@ -111,10 +137,15 @@ pub async fn create_post(
         post_req.content.clone(),
     );
     
-    // In a real application, you would save this to a database
-    info!("Created new blog post: {}", post.title);
+    let created_post = repo.create(post).await
+        .map_err(|e| {
+            error!("Failed to create post: {}", e);
+            AppError::internal_error(format!("Failed to create post: {}", e))
+        })?;
     
-    Ok(HttpResponse::Created().json(post))
+    info!("Created new post: {}", created_post.title);
+    
+    Ok(HttpResponse::Created().json(created_post))
 }
 
 /// Update an existing blog post
@@ -145,12 +176,17 @@ pub async fn update_post(
     path: web::Path<String>,
     post_req: web::Json<UpdatePostRequest>,
     _user: AuthenticatedUser, // Require authentication
+    db: web::Data<DbPool>,
 ) -> AppResult<impl Responder> {
     let id = path.into_inner();
-    let posts = get_mock_posts();
+    let repo = PostRepository::new(db.get_ref().clone());
     
     // Find the post to update
-    let existing_post = posts.iter().find(|p| p.id == id)
+    let existing_post = repo.find_by_id(&id).await
+        .map_err(|e| {
+            error!("Failed to fetch post for update: {}", e);
+            AppError::internal_error(format!("Failed to fetch post: {}", e))
+        })?
         .ok_or_else(|| {
             info!("Post with ID {} not found for update", id);
             AppError::not_found(format!("Post with ID {} not found", id))
@@ -166,10 +202,15 @@ pub async fn update_post(
         content: post_req.content.clone().unwrap_or_else(|| existing_post.content.clone()),
     };
     
-    // In a real application, you would update this in a database
-    info!("Updated blog post with ID: {}", id);
+    let result = repo.update(&id, updated_post.clone()).await
+        .map_err(|e| {
+            error!("Failed to update post: {}", e);
+            AppError::internal_error(format!("Failed to update post: {}", e))
+        })?;
     
-    Ok(HttpResponse::Ok().json(updated_post))
+    info!("Updated post with ID: {}", id);
+    
+    Ok(HttpResponse::Ok().json(result))
 }
 
 /// Delete a blog post
@@ -197,20 +238,31 @@ pub async fn update_post(
 pub async fn delete_post(
     path: web::Path<String>,
     _user: AuthenticatedUser, // Require authentication
+    db: web::Data<DbPool>,
 ) -> AppResult<impl Responder> {
     let id = path.into_inner();
-    let posts = get_mock_posts();
+    let repo = PostRepository::new(db.get_ref().clone());
     
     // Check if the post exists
-    let post_exists = posts.iter().any(|p| p.id == id);
+    let post_exists = repo.find_by_id(&id).await
+        .map_err(|e| {
+            error!("Failed to check if post exists: {}", e);
+            AppError::internal_error(format!("Failed to check if post exists: {}", e))
+        })?
+        .is_some();
     
     if !post_exists {
         info!("Post with ID {} not found for deletion", id);
         return Err(AppError::not_found(format!("Post with ID {} not found", id)));
     }
     
-    // In a real application, you would delete this from a database
-    info!("Deleted blog post with ID: {}", id);
+    repo.delete(&id).await
+        .map_err(|e| {
+            error!("Failed to delete post: {}", e);
+            AppError::internal_error(format!("Failed to delete post: {}", e))
+        })?;
+    
+    info!("Deleted post with ID: {}", id);
     
     Ok(HttpResponse::NoContent().finish())
 }

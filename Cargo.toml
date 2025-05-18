@@ -3,6 +3,14 @@ name = "retro-quewui-backend"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "retro_quewui_backend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "retro-quewui-backend"
+path = "src/main.rs"
+
 [dependencies]
 actix-web = "4.4.0"
 actix-cors = "0.6.4"

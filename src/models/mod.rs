@@ -1,9 +1,14 @@
 pub mod project;
 pub mod project_repository;
 pub mod experience;
+pub mod experience_repository;
 pub mod skill;
+pub mod skill_repository;
 pub mod post;
+pub mod post_repository;
 pub mod github_stats;
+pub mod github_stats_repository;
 pub mod contact;
 pub mod repository;
 pub mod profile;
+pub mod profile_repository;

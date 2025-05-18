@@ -7,7 +7,7 @@ use crate::auth::AuthenticatedUser;
 use crate::config::database::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::project::Project;
-use crate::models::project_repository::{ProjectRepository, seed_projects};
+use crate::models::project_repository::ProjectRepository;
 use crate::models::repository::Repository;
 
 /// Get all projects
@@ -25,12 +25,6 @@ use crate::models::repository::Repository;
 #[get("/projects")]
 pub async fn get_all_projects(db: web::Data<DbPool>) -> AppResult<impl Responder> {
     let repo = ProjectRepository::new(db.get_ref().clone());
-    
-    // Seed database with mock data if empty (for development)
-    if let Err(e) = seed_projects(&repo).await {
-        error!("Failed to seed projects: {}", e);
-        // Continue even if seeding fails
-    }
     
     let projects = repo.find_all().await
         .map_err(|e| {

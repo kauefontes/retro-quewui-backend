@@ -1,11 +1,14 @@
 // filepath: /home/kaue/developer/quewuicom/retro-quewui-backend/src/routes/github_stats.rs
 use actix_web::{get, put, web, HttpResponse, Responder};
-use log::info;
+use log::{error, info};
 use serde::Deserialize;
 
 use crate::auth::AuthenticatedUser;
-use crate::error::AppResult;
-use crate::models::github_stats::get_mock_github_stats;
+use crate::config::database::DbPool;
+use crate::error::{AppError, AppResult};
+use crate::models::github_stats::{GithubStats, TopLanguage, RecentActivity};
+use crate::models::github_stats_repository::GithubStatsRepository;
+use crate::models::repository::Repository;
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateGithubStatsRequest {
@@ -17,6 +20,10 @@ pub struct UpdateGithubStatsRequest {
     pub followers: Option<i32>,
     /// Number of contributions in past year
     pub contributions: Option<i32>,
+    /// Top programming languages
+    pub top_languages: Option<Vec<TopLanguage>>,
+    /// Recent GitHub activity
+    pub recent_activity: Option<Vec<RecentActivity>>,
 }
 
 /// Get GitHub statistics
@@ -32,9 +39,23 @@ pub struct UpdateGithubStatsRequest {
     )
 )]
 #[get("/github-stats")]
-pub async fn get_github_stats() -> impl Responder {
-    let stats = get_mock_github_stats();
-    HttpResponse::Ok().json(stats)
+pub async fn get_github_stats(db: web::Data<DbPool>) -> AppResult<impl Responder> {
+    let repo = GithubStatsRepository::new(db.get_ref().clone());
+    
+    let stats_list = repo.find_all().await
+        .map_err(|e| {
+            error!("Failed to fetch GitHub stats: {}", e);
+            AppError::internal_error(format!("Failed to fetch GitHub stats: {}", e))
+        })?;
+    
+    if stats_list.is_empty() {
+        return Err(AppError::not_found("GitHub stats not found"));
+    }
+    
+    // Return the first stats (there should only be one)
+    let stats = &stats_list[0];
+    
+    Ok(HttpResponse::Ok().json(stats))
 }
 
 /// Update GitHub statistics
@@ -58,32 +79,63 @@ pub async fn get_github_stats() -> impl Responder {
 #[put("/github-stats")]
 pub async fn update_github_stats(
     stats_req: web::Json<UpdateGithubStatsRequest>,
+    db: web::Data<DbPool>,
     _user: AuthenticatedUser, // Require authentication
 ) -> AppResult<impl Responder> {
-    // Get current stats
-    let mut stats = get_mock_github_stats();
+    let repo = GithubStatsRepository::new(db.get_ref().clone());
     
-    // Update fields if provided
-    if let Some(username) = &stats_req.username {
-        stats.username = username.clone();
-    }
+    // Get all stats
+    let stats_list = repo.find_all().await
+        .map_err(|e| {
+            error!("Failed to fetch GitHub stats: {}", e);
+            AppError::internal_error(format!("Failed to fetch GitHub stats: {}", e))
+        })?;
     
-    if let Some(repo_count) = stats_req.repo_count {
-        stats.repo_count = repo_count;
-    }
+    let (stats_id, existing_stats) = if stats_list.is_empty() {
+        // Create default stats if none exist
+        let new_stats = GithubStats {
+            username: stats_req.username.clone().unwrap_or_else(|| "github_user".to_string()),
+            repo_count: stats_req.repo_count.unwrap_or(0),
+            followers: stats_req.followers.unwrap_or(0),
+            contributions: stats_req.contributions.unwrap_or(0),
+            top_languages: stats_req.top_languages.clone().unwrap_or_default(),
+            recent_activity: stats_req.recent_activity.clone().unwrap_or_default(),
+        };
+        
+        let stats = repo.create(new_stats).await
+            .map_err(|e| {
+                error!("Failed to create GitHub stats: {}", e);
+                AppError::internal_error(format!("Failed to create GitHub stats: {}", e))
+            })?;
+        
+        ("github-stats-1".to_string(), stats)
+    } else {
+        // Use the first stats
+        let stats = &stats_list[0];
+        let stats_id = format!("github-stats-{}", 1); // Assuming ID follows a pattern
+        (stats_id, stats.clone())
+    };
     
-    if let Some(followers) = stats_req.followers {
-        stats.followers = followers;
-    }
+    // Update with new values if provided
+    let updated_stats = GithubStats {
+        username: stats_req.username.clone().unwrap_or_else(|| existing_stats.username.clone()),
+        repo_count: stats_req.repo_count.unwrap_or(existing_stats.repo_count),
+        followers: stats_req.followers.unwrap_or(existing_stats.followers),
+        contributions: stats_req.contributions.unwrap_or(existing_stats.contributions),
+        top_languages: stats_req.top_languages.clone().unwrap_or_else(|| existing_stats.top_languages.clone()),
+        recent_activity: stats_req.recent_activity.clone().unwrap_or_else(|| existing_stats.recent_activity.clone()),
+    };
     
-    if let Some(contributions) = stats_req.contributions {
-        stats.contributions = contributions;
-    }
+    // Save updated stats
+    let result = repo.update(&stats_id, updated_stats.clone()).await
+        .map_err(|e| {
+            error!("Failed to update GitHub stats: {}", e);
+            AppError::internal_error(format!("Failed to update GitHub stats: {}", e))
+        })?;
     
-    // In a real application, you would save this to a database
-    info!("Updated GitHub stats for user: {}", stats.username);
+    info!("Updated GitHub stats for user: {}", result.username);
     
-    Ok(HttpResponse::Ok().json(stats))
+    Ok(HttpResponse::Ok().json(result))
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
