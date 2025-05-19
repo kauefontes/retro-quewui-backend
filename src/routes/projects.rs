@@ -87,8 +87,10 @@ pub struct CreateProjectRequest {
     pub github_url: Option<String>,
     /// Optional link to live demo
     pub live_url: Option<String>,
-    /// Optional URL to project image/screenshot
+    /// Optional URL to main project image
     pub image_url: Option<String>,
+    /// Optional list of additional project image URLs
+    pub image_urls: Option<Vec<String>>,
     /// Year the project was completed
     pub year: i32,
     /// Key highlights or features of the project
@@ -107,8 +109,10 @@ pub struct UpdateProjectRequest {
     pub github_url: Option<String>,
     /// Optional link to live demo
     pub live_url: Option<String>,
-    /// Optional URL to project image/screenshot
+    /// Optional URL to main project image
     pub image_url: Option<String>,
+    /// Optional list of additional project image URLs
+    pub image_urls: Option<Vec<String>>,
     /// Year the project was completed
     pub year: Option<i32>,
     /// Key highlights or features of the project
@@ -149,6 +153,7 @@ pub async fn create_project(
         project_req.github_url.clone(),
         project_req.live_url.clone(),
         project_req.image_url.clone(),
+        project_req.image_urls.clone(),
         project_req.year,
         project_req.highlights.clone(),
     );
@@ -216,6 +221,7 @@ pub async fn update_project(
         github_url: project_req.github_url.clone().or(existing_project.github_url),
         live_url: project_req.live_url.clone().or(existing_project.live_url),
         image_url: project_req.image_url.clone().or(existing_project.image_url),
+        image_urls: project_req.image_urls.clone().or(existing_project.image_urls),
         year: project_req.year.unwrap_or(existing_project.year),
         highlights: project_req.highlights.clone().unwrap_or(existing_project.highlights),
     };

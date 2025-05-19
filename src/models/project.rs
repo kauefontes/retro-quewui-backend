@@ -10,7 +10,8 @@ use utoipa::ToSchema;
     "technologies": ["React", "TypeScript", "WebSockets", "D3.js"],
     "github_url": "https://github.com/username/auto-dashboard",
     "live_url": "https://auto-dashboard.example.com",
-    "image_url": null,
+    "image_url": "https://example.com/images/project1.jpg",
+    "image_urls": ["https://example.com/images/project1-detail1.jpg", "https://example.com/images/project1-detail2.jpg"],
     "year": 2024,
     "highlights": ["Real-time data visualization", "Cross-platform compatibility"]
 }))]
@@ -27,8 +28,10 @@ pub struct Project {
     pub github_url: Option<String>,
     /// Optional link to live demo
     pub live_url: Option<String>,
-    /// Optional URL to project image/screenshot
+    /// Optional URL to the main project image
     pub image_url: Option<String>,
+    /// Optional list of additional project image URLs
+    pub image_urls: Option<Vec<String>>,
     /// Year the project was completed
     pub year: i32,
     /// Key highlights or features of the project
@@ -43,6 +46,7 @@ impl Project {
         github_url: Option<String>,
         live_url: Option<String>,
         image_url: Option<String>,
+        image_urls: Option<Vec<String>>,
         year: i32,
         highlights: Vec<String>,
     ) -> Self {
@@ -54,6 +58,7 @@ impl Project {
             github_url,
             live_url,
             image_url,
+            image_urls,
             year,
             highlights,
         }

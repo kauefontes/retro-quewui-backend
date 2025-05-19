@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS projects (
     technologies TEXT NOT NULL, -- JSON array as text
     github_url TEXT,
     live_url TEXT,
-    image_url TEXT,
+    image_url TEXT, -- Main project image
+    image_urls TEXT, -- JSON array of additional image URLs
     year INTEGER NOT NULL,
     highlights TEXT NOT NULL, -- JSON array as text
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

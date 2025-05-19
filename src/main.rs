@@ -37,13 +37,13 @@ async fn main() -> std::io::Result<()> {
     };
     
     // Get host and port from environment or use defaults
-    let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
     let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .expect("PORT must be a number");
         
     // Frontend URL for CORS
-    let frontend_url = env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let frontend_url = env::var("FRONTEND_URL").unwrap_or_else(|_| "http://192.168.15.153:5173".to_string());
     
     log::info!("Starting server at http://{}:{}", host, port);
     log::info!("API documentation available at http://{}:{}/docs", host, port);
