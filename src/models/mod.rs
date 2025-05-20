@@ -12,3 +12,5 @@ pub mod contact;
 pub mod repository;
 pub mod profile;
 pub mod profile_repository;
+pub mod github_profile;
+pub mod github_profile_repository;

@@ -3,6 +3,7 @@ pub mod auth;
 pub mod contact;
 pub mod experiences;
 pub mod github_stats;
+pub mod github_profile;
 pub mod health;
 pub mod posts;
 pub mod profile;
