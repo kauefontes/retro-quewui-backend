@@ -13,9 +13,9 @@ use crate::models::github_stats_repository::GithubStatsRepository;
 use crate::models::repository::Repository;
 use crate::services::github_service::GitHubService;
 
-// Cache para os dados de GitHub, com um tempo de expiração
+// Cache for GitHub data with expiration time
 static GITHUB_STATS_CACHE: Lazy<Mutex<Option<(Instant, GithubStats)>>> = Lazy::new(|| Mutex::new(None));
-static CACHE_EXPIRATION: Duration = Duration::from_secs(3600); // 1 hora
+static CACHE_EXPIRATION: Duration = Duration::from_secs(3600); // 1 hour
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateGithubStatsRequest {
@@ -51,24 +51,22 @@ pub async fn get_github_stats(
 ) -> AppResult<impl Responder> {
     let repo = GithubStatsRepository::new(db.get_ref().clone());
     
-    // Verificar se temos um cache válido
+    // Check if we have a valid cache
     {
         let cache_lock = GITHUB_STATS_CACHE.lock().unwrap();
         if let Some((timestamp, cached_stats)) = &*cache_lock {
             if timestamp.elapsed() < CACHE_EXPIRATION {
-                // Cache válido, use-o
-                info!("Usando cache para GitHub stats (expiração em {} segundos)", 
+                // Valid cache, use it
+                info!("Using cached GitHub stats (expires in {} seconds)", 
                       CACHE_EXPIRATION.as_secs() - timestamp.elapsed().as_secs());
                 return Ok(HttpResponse::Ok().json(cached_stats.clone()));
             }
-            // Cache expirado, atualize-o
-            info!("Cache expirado, obtendo novos dados");
+            info!("Cache expired, fetching new data");
         } else {
-            info!("Cache vazio, obtendo dados do banco");
+            info!("Cache empty, fetching data from database");
         }
     }
     
-    // Obtenha os dados do banco de dados
     let stats_list = repo.find_all().await
         .map_err(|e| {
             error!("Failed to fetch GitHub stats: {}", e);
@@ -80,7 +78,7 @@ pub async fn get_github_stats(
         let github_username = std::env::var("GITHUB_USERNAME")
             .unwrap_or_else(|_| "github_user".to_string());
             
-        info!("Nenhum dado encontrado no banco, criando stats padrão");
+        info!("No data found in database, creating default stats");
         GithubStats {
             username: github_username,
             repo_count: 0,
@@ -92,13 +90,11 @@ pub async fn get_github_stats(
     } else {
         stats_list[0].clone()
     };
-    
-    // Iniciar uma task em background para atualizar os dados
-    // sem bloquear a resposta atual
+
     let stats_clone = stats.clone();
     let db_clone = db.get_ref().clone();
     actix_web::rt::spawn(async move {
-        info!("Iniciando atualização em background dos dados do GitHub");
+        info!("Starting background update of GitHub data");
         let repo = GithubStatsRepository::new(db_clone);
         let github_username = std::env::var("GITHUB_USERNAME")
             .unwrap_or_else(|_| "github_user".to_string());
@@ -112,10 +108,10 @@ pub async fn get_github_stats(
             return;
         }
         
-        // Atualiza o cache com os novos dados
+        // Update the cache with new data
         let mut cache_lock = GITHUB_STATS_CACHE.lock().unwrap();
         *cache_lock = Some((Instant::now(), stats));
-        info!("GitHub stats atualizados com sucesso em background");
+        info!("GitHub stats successfully updated in background");
     });
     
     Ok(HttpResponse::Ok().json(stats))

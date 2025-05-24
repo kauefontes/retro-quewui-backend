@@ -195,16 +195,16 @@ impl GitHubService {
     }
     
     pub async fn get_language_stats(&self) -> Result<Vec<TopLanguage>> {
-        // Buscar todos os repositórios do usuário (max 100)
+        // Fetch all user repositories (max 100)
         let repos = self.get_user_repos(100, 1).await?;
         let mut language_counts: HashMap<String, i32> = HashMap::new();
         let mut total_repos = 0;
         
-        // Em vez de fazer uma chamada para cada repositório,
-        // contamos as linguagens primárias de cada repositório
+        // Instead of making a request for each repository,
+        // we count the primary languages of each repository
         for repo in repos {
             if let Some(lang) = repo.language {
-                // Ignorar repositórios sem linguagem definida
+                // Ignore repositories without defined language
                 if !lang.is_empty() {
                     *language_counts.entry(lang).or_insert(0) += 1;
                     total_repos += 1;
@@ -212,7 +212,7 @@ impl GitHubService {
             }
         }
         
-        // Se não temos linguagens suficientes, retornamos dados mockados de qualidade
+        // If we don't have enough languages, return high-quality mock data
         if total_repos < 5 {
             return Ok(vec![
                 TopLanguage { name: "Rust".to_string(), percentage: 35 },
@@ -223,14 +223,14 @@ impl GitHubService {
             ]);
         }
         
-        // Calcular porcentagens e criar objetos TopLanguage
+        // Calculate percentages and create TopLanguage objects
         let mut top_languages: Vec<TopLanguage> = Vec::new();
         
-        // Obter as 4 principais linguagens
+        // Get the top 4 languages
         let mut language_entries: Vec<_> = language_counts.iter().collect();
-        language_entries.sort_by(|a, b| b.1.cmp(a.1)); // Ordenar por contagem em ordem decrescente
+        language_entries.sort_by(|a, b| b.1.cmp(a.1)); // Sort by count in descending order
         
-        let top_languages_count = 4; // Top 4 linguagens, com "Other" como a 5ª
+        let top_languages_count = 4; // Top 4 languages, with "Other" as the 5th
         let mut other_percentage = 0;
         let mut processed_languages = 0;
         
@@ -243,12 +243,12 @@ impl GitHubService {
                 });
                 processed_languages += 1;
             } else if total_repos > 0 {
-                // Adicionar à categoria "Other"
+                // Add to "Other" category
                 other_percentage += (**count as f32 / total_repos as f32 * 100.0).round() as i32;
             }
         }
         
-        // Adicionar categoria "Other" se houver linguagens restantes
+        // Add "Other" category if there are remaining languages
         if other_percentage > 0 {
             top_languages.push(TopLanguage {
                 name: "Other".to_string(),
@@ -256,10 +256,10 @@ impl GitHubService {
             });
         }
         
-        // Garantir que as porcentagens somem 100%
+        // Ensure percentages add up to 100%
         let total_percent: i32 = top_languages.iter().map(|l| l.percentage).sum();
         if total_percent != 100 && !top_languages.is_empty() {
-            // Ajustar a maior linguagem para fazer o total ser 100%
+            // Adjust the largest language to make the total 100%
             let diff = 100 - total_percent;
             if let Some(largest) = top_languages.iter_mut().max_by_key(|l| l.percentage) {
                 largest.percentage += diff;
@@ -269,7 +269,7 @@ impl GitHubService {
         Ok(top_languages)
     }
     
-    // Métodos auxiliares removidos pois não são mais utilizados
+    // Helper methods removed as they are no longer used
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
