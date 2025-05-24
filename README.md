@@ -120,13 +120,18 @@ Configure the following variables in the `.env` file:
 - `FRONTEND_URL` - Frontend URL for CORS configuration (default: http://localhost:5173)
 - `RUST_LOG` - Log level (default: info)
 - `JWT_SECRET` - Secret key for JWT token generation
+- `ADMIN_USERNAME` - Admin username for authentication (default: admin)
+- `ADMIN_PASSWORD` - Admin password for authentication (default: admin)
+- `USER_EMAIL` - User email for authentication (default: user@example.com)
+- `USER_PASSWORD` - User password for authentication (default: password)
 
 ## Production Deployment Checklist
 
 Before deploying to production, ensure:
 
 1. Set a strong `JWT_SECRET` in the environment
-2. Configure proper CORS settings with your production frontend URL
+2. Configure secure authentication credentials (`ADMIN_USERNAME`, `ADMIN_PASSWORD`, `USER_EMAIL`, `USER_PASSWORD`)
+3. Configure proper CORS settings with your production frontend URL
 3. Set up monitoring and logging
 4. Configure a reverse proxy (like Nginx) for SSL termination
 5. Set up database backups
