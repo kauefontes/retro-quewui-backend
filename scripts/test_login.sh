@@ -4,12 +4,16 @@
 # Base URL
 BASE_URL="http://localhost:8080"
 
+# Get credentials from environment variables or use defaults
+USER_EMAIL=${USER_EMAIL:-"admin"}
+USER_PASSWORD=${USER_PASSWORD:-"admin"}
+
 echo "Testing login..."
 LOGIN_RESPONSE=$(curl -s -X POST "${BASE_URL}/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "kauefontes@outlook.com",
-    "password": "MT$MT$T4lutaEPRAV4LER"
+    "username": "'${USER_EMAIL}'",
+    "password": "'${USER_PASSWORD}'"
   }')
 
 echo "Login response: $LOGIN_RESPONSE"

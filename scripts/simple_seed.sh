@@ -1,22 +1,44 @@
 #!/bin/bash
 # Simple script to seed database
 
-# Set token from login response
-TOKEN="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwibmFtZSI6IkthdWUgRm9udGVzIiwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzQ3Njg5MzkxLCJpYXQiOjE3NDc2MDI5OTF9.g6TK4fPP9VBZx0H8o7MUJt2OjK8-UhC8tWo04ulL4To"
+# Base URL
 BASE_URL="http://localhost:8080"
+
+# Get credentials from environment variables or use defaults
+USER_EMAIL=${USER_EMAIL:-"admin"}
+USER_PASSWORD=${USER_PASSWORD:-"admin"}
+
+# Login to get JWT token
+echo "Logging in..."
+LOGIN_RESPONSE=$(curl -s -X POST "${BASE_URL}/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "'${USER_EMAIL}'",
+    "password": "'${USER_PASSWORD}'"
+  }')
+
+# Extract token
+TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"token":"[^"]*' | sed 's/"token":"//')
+
+if [ -z "$TOKEN" ]; then
+  echo "Error: Failed to authenticate. Response: $LOGIN_RESPONSE"
+  exit 1
+fi
+
+echo "Successfully authenticated."
 
 # Function to POST with error checking
 post_data() {
   local endpoint=$1
   local data=$2
   local response
-  
+
   echo "Sending to $endpoint..."
   response=$(curl -s -X POST "${BASE_URL}${endpoint}" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $TOKEN" \
     -d "$data")
-    
+
   echo "Response: $response"
   echo ""
 }
@@ -26,13 +48,13 @@ put_data() {
   local endpoint=$1
   local data=$2
   local response
-  
+
   echo "Sending to $endpoint..."
   response=$(curl -s -X PUT "${BASE_URL}${endpoint}" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $TOKEN" \
     -d "$data")
-    
+
   echo "Response: $response"
   echo ""
 }
