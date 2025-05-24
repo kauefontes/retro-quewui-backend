@@ -42,6 +42,7 @@ use utoipa_swagger_ui::SwaggerUi;
         // GitHub stats endpoint
         crate::routes::github_stats::get_github_stats,
         crate::routes::github_stats::update_github_stats,
+        crate::routes::github_stats::refresh_github_stats,
 
         // Profile endpoint
         crate::routes::profile::get_profile,

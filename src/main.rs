@@ -40,16 +40,12 @@ async fn main() -> std::io::Result<()> {
     log::info!("Allowing CORS from: {}", frontend_url);
     
     // Initialize GitHub service
-    let github_service = match GitHubService::new() {
-        Ok(service) => {
-            log::info!("GitHub service initialized successfully");
-            service
-        },
-        Err(e) => {
-            log::error!("Failed to initialize GitHub service: {}", e);
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, "GitHub service initialization failed"));
-        }
-    };
+    // Obter credenciais do GitHub do ambiente
+    let github_username = env::var("GITHUB_USERNAME").unwrap_or_else(|_| "github_user".to_string());
+    let github_token = env::var("GITHUB_TOKEN").ok();
+    
+    let github_service = GitHubService::new(github_username, github_token);
+    log::info!("GitHub service initialized successfully");
     
     // Create GitHub repository
     let github_repo = web::Data::new(

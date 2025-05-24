@@ -150,7 +150,7 @@ pub async fn authenticate_user(username: &str, password: &str) -> AppResult<Opti
     let admin_username = env::var("ADMIN_USERNAME").unwrap_or_else(|_| "admin".to_string());
     let admin_password = env::var("ADMIN_PASSWORD").unwrap_or_else(|_| "admin".to_string());
 
-    if (username == admin_username && password == admin_password) {
+    if username == admin_username && password == admin_password {
         Ok(Some(User {
             id: "1".to_string(),
             name: "Kaue Fontes".to_string(),
