@@ -37,12 +37,15 @@ impl GitHubProfileRepository {
         
         // Transform the data into our GitHubProfile model
         let organizations = orgs.into_iter()
-            .map(|org| GitHubOrganization {
-                login: org.login,
-                id: org.id,
-                avatar_url: org.avatar_url,
-                description: org.description,
-                html_url: org.html_url,
+            .map(|org| {
+                let login_clone = org.login.clone(); // Clone before it's moved
+                GitHubOrganization {
+                    login: org.login,
+                    id: org.id,
+                    avatar_url: org.avatar_url,
+                    description: org.description,
+                    html_url: format!("https://github.com/{}", login_clone),
+                }
             })
             .collect();
             
