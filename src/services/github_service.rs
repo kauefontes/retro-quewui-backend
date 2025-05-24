@@ -52,7 +52,7 @@ pub struct GitHubOrg {
     pub id: i64,
     pub avatar_url: String,
     pub description: Option<String>,
-    pub html_url: String,
+    pub url: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
